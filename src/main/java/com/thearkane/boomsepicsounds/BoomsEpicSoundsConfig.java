@@ -222,3 +222,4 @@ public interface BoomsEpicSoundsConfig extends Config
             section = pvpSection
     )
     default boolean sendReport() { return true; }
+}
