@@ -3,18 +3,23 @@ package com.thearkane.boomsepicsounds;
 import com.google.inject.Provides;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.Experience;
+import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.audio.AudioPlayer;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -24,11 +29,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.http.api.item.ItemPrice;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.GameState;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.chat.QueuedMessage;
 
 @Slf4j
 @PluginDescriptor(
@@ -38,13 +38,47 @@ import net.runelite.client.chat.QueuedMessage;
 )
 public class BoomsEpicSoundsPlugin extends Plugin
 {
-    private static final String SOUND_LOOT = "/thehit.wav";
-    private static final String SOUND_PRAYER = "/prayer.wav";
-    private static final String SOUND_PLAYER_KILL = "/letsgo.wav";
-    private static final String SOUND_REPORT = "/letsgo.wav";
-    private static final String SOUND_DEATH = "/death.wav";
-    private static final String SOUND_LEVEL_UP = "/letsgo.wav";
-    private static final String SOUND_QUEST = "/letsgo.wav";
+    private static final String[] LOOT_SOUNDS =
+            {
+                    "/thehit.wav",
+                    "/letsgo.wav",
+            };
+
+    private static final String[] PRAYER_SOUNDS =
+            {
+                    "/prayer.wav",
+            };
+
+    private static final String[] DEATH_SOUNDS =
+            {
+                    "/ohnostepbro.wav"
+            };
+
+    private static final String[] PLAYER_KILL_SOUNDS =
+            {
+                    "/takethisdlong.wav"
+            };
+
+    private static final String[] REPORT_SOUNDS =
+            {
+                    "/wellhesgunnagetbanned.wav",
+                    "/wellyourgunnagetbanned.wav"
+            };
+
+    private static final String[] LEVEL_UP_SOUNDS =
+            {
+                    "/wellthatsgoingtomakeitgrowabit.wav",
+                    "/anotherlevelanotherinch.wav"
+
+
+            };
+
+    private static final String[] QUEST_SOUNDS =
+            {
+                    "/QuestCompleted/finallyquestcomplete.wav",
+                    "/QuestCompleted/goodjobbuddyhopeyourhavingfun.wav",
+                    "/QuestCompleted/ohmyyoufinishedanotherquest.wav"
+            };
 
     @Inject
     private Client client;
@@ -58,12 +92,12 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Inject
     private ChatMessageManager chatMessageManager;
 
-
     @Inject
     private AudioPlayer audioPlayer;
 
     private final Set<Integer> trackedItemIds = new HashSet<>();
-    private final int[] lastXp = new int[Skill.values().length];
+    private final int[] lastLevels = new int[Skill.values().length];
+    private final Random random = new Random();
 
     private int lastSoundTick = -1;
     private boolean wasDead;
@@ -80,7 +114,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Override
     protected void startUp()
     {
-        Arrays.fill(lastXp, -1);
+        Arrays.fill(lastLevels, -1);
         initialized = false;
         pendingReload = true;
         wasDead = false;
@@ -150,6 +184,14 @@ public class BoomsEpicSoundsPlugin extends Plugin
         pendingReload = true;
     }
 
+    private void initialiseLevels()
+    {
+        for (Skill skill : Skill.values())
+        {
+            lastLevels[skill.ordinal()] = client.getRealSkillLevel(skill);
+        }
+    }
+
     @Subscribe
     public void onLootReceived(LootReceived event)
     {
@@ -178,7 +220,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
             if (shouldTrigger)
             {
-                trigger(SOUND_LOOT);
+                trigger(LOOT_SOUNDS);
                 return;
             }
         }
@@ -189,6 +231,12 @@ public class BoomsEpicSoundsPlugin extends Plugin
     {
         if (event.getGameState() == GameState.LOGGED_IN)
         {
+            // Only initialise once per login session
+            if (lastLevels[0] == -1)
+            {
+                initialiseLevels();
+            }
+
             if (!streamerMessageShown)
             {
                 sendStreamerMessage();
@@ -197,6 +245,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         else if (event.getGameState() == GameState.LOGIN_SCREEN)
         {
             streamerMessageShown = false;
+            Arrays.fill(lastLevels, -1);
         }
     }
 
@@ -210,23 +259,20 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
         Skill skill = event.getSkill();
         int idx = skill.ordinal();
-        int xp = event.getXp();
+        int currentLevel = event.getLevel();
 
-        if (lastXp[idx] == -1)
+        if (lastLevels[idx] == -1)
         {
-            lastXp[idx] = xp;
+            lastLevels[idx] = currentLevel;
             return;
         }
 
-        int oldLevel = Experience.getLevelForXp(lastXp[idx]);
-        int newLevel = Experience.getLevelForXp(xp);
-
-        if (newLevel > oldLevel)
+        if (currentLevel > lastLevels[idx])
         {
-            trigger(SOUND_LEVEL_UP);
+            trigger(LEVEL_UP_SOUNDS);
         }
 
-        lastXp[idx] = xp;
+        lastLevels[idx] = currentLevel;
     }
 
     @Subscribe
@@ -249,7 +295,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
         if (dead && !wasDead && config.death())
         {
-            trigger(SOUND_DEATH);
+            trigger(DEATH_SOUNDS);
         }
 
         wasDead = dead;
@@ -269,15 +315,13 @@ public class BoomsEpicSoundsPlugin extends Plugin
         if (config.playerKilling()
                 && (msg.contains("you have defeated") || msg.contains("you killed")))
         {
-            trigger(SOUND_PLAYER_KILL);
+            trigger(PLAYER_KILL_SOUNDS);
             return;
         }
 
-        if (config.sendReport()
-                && (msg.contains("your abuse report has been received")
-                || msg.contains("thank-you, your abuse report has been received")))
+        if (config.sendReport() && msg.contains("abuse report"))
         {
-            trigger(SOUND_REPORT);
+            trigger(REPORT_SOUNDS);
             return;
         }
 
@@ -286,25 +330,32 @@ public class BoomsEpicSoundsPlugin extends Plugin
                 || msg.contains("you need to recharge your prayer")
                 || msg.contains("your prayer has been drained")))
         {
-            trigger(SOUND_PRAYER);
+            trigger(PRAYER_SOUNDS);
             return;
         }
 
         if (config.questCompletions()
                 && (msg.contains("quest complete") || msg.contains("congratulations, quest complete")))
         {
-            trigger(SOUND_QUEST);
+            trigger(QUEST_SOUNDS);
         }
     }
 
-    private void trigger(String soundFile)
+    private void trigger(String[] soundFiles)
     {
         if (client.getTickCount() == lastSoundTick)
         {
             return;
         }
 
+        if (soundFiles == null || soundFiles.length == 0)
+        {
+            return;
+        }
+
         lastSoundTick = client.getTickCount();
+
+        String soundFile = soundFiles[random.nextInt(soundFiles.length)];
         playSound(soundFile);
     }
 

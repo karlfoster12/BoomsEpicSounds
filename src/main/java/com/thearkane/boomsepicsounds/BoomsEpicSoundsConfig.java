@@ -1,6 +1,5 @@
 package com.thearkane.boomsepicsounds;
 
-
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -219,7 +218,8 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "sendReport",
             name = "Report Player",
             description = "Plays sound when reporting a player",
-            section = pvpSection
+            section = MiscSection
     )
     default boolean sendReport() { return true; }
+
 }
