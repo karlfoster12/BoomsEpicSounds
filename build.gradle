@@ -8,8 +8,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'net.runelite:runelite-api:latest.release'
-    compileOnly 'net.runelite:runelite-client:latest.release'
+    compileOnly 'net.runelite:client:latest.release'
 }
 
 group = project.property('group')
