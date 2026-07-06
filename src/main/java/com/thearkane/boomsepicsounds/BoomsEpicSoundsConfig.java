@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.boomsepicsounds;
+package com.thearkane.boomsepicsounds;
 
 
 import net.runelite.client.config.Config;
