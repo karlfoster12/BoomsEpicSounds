@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.runelite.net' }
+}
+
+dependencies {
+    compileOnly 'net.runelite:runelite-api:latest.release'
+    compileOnly 'net.runelite:runelite-client:latest.release'
+}
+
+group = project.property('group')
+version = project.property('version')
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
