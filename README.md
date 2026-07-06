@@ -34,3 +34,7 @@ Booms Epic Sounds is a RuneLite plugin that plays custom sound effects for selec
 ## License
 
 BSD-2-Clause
+
+## Audio Credits
+
+Some audio clips are used with permission from BoomEpicKill for use in the Booms Epic Sounds RuneLite plugin.
