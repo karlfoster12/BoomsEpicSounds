@@ -24,270 +24,332 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.http.api.item.ItemPrice;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Booms Epic Sounds",
-	description = "Booms combat + PvP + achievement sound system",
-	tags = {"sounds", "pvm", "pvp", "fun"}
+        name = "Booms Epic Sounds",
+        description = "Booms combat + PvP + achievement sound system",
+        tags = {"sounds", "pvm", "pvp", "fun"}
 )
 public class BoomsEpicSoundsPlugin extends Plugin
 {
-	private static final String SOUND_LOOT = "/thehit.wav";
-	private static final String SOUND_PRAYER = "/prayer.wav";
-	private static final String SOUND_PLAYER_KILL = "/letsgo.wav";
-	private static final String SOUND_REPORT = "/letsgo.wav";
-	private static final String SOUND_DEATH = "/death.wav";
-	private static final String SOUND_LEVEL_UP = "/letsgo.wav";
-	private static final String SOUND_QUEST = "/letsgo.wav";
+    private static final String SOUND_LOOT = "/thehit.wav";
+    private static final String SOUND_PRAYER = "/prayer.wav";
+    private static final String SOUND_PLAYER_KILL = "/letsgo.wav";
+    private static final String SOUND_REPORT = "/letsgo.wav";
+    private static final String SOUND_DEATH = "/death.wav";
+    private static final String SOUND_LEVEL_UP = "/letsgo.wav";
+    private static final String SOUND_QUEST = "/letsgo.wav";
 
-	@Inject
-	private Client client;
+    @Inject
+    private Client client;
 
-	@Inject
-	private BoomsEpicSoundsConfig config;
+    @Inject
+    private BoomsEpicSoundsConfig config;
 
-	@Inject
-	private ItemManager itemManager;
+    @Inject
+    private ItemManager itemManager;
 
-	@Inject
-	private AudioPlayer audioPlayer;
+    @Inject
+    private ChatMessageManager chatMessageManager;
 
-	private final Set<Integer> trackedItemIds = new HashSet<>();
-	private final int[] lastXp = new int[Skill.values().length];
 
-	private int lastSoundTick = -1;
-	private boolean wasDead;
-	private boolean initialized;
-	private boolean pendingReload = true;
+    @Inject
+    private AudioPlayer audioPlayer;
 
-	@Provides
-	BoomsEpicSoundsConfig provideConfig(ConfigManager configManager)
-	{
-		return configManager.getConfig(BoomsEpicSoundsConfig.class);
-	}
+    private final Set<Integer> trackedItemIds = new HashSet<>();
+    private final int[] lastXp = new int[Skill.values().length];
 
-	@Override
-	protected void startUp()
-	{
-		Arrays.fill(lastXp, -1);
-		initialized = false;
-		pendingReload = true;
-		wasDead = false;
-	}
+    private int lastSoundTick = -1;
+    private boolean wasDead;
+    private boolean initialized;
+    private boolean pendingReload = true;
+    private boolean streamerMessageShown;
 
-	@Override
-	protected void shutDown()
-	{
-		trackedItemIds.clear();
-		initialized = false;
-		pendingReload = true;
-	}
+    @Provides
+    BoomsEpicSoundsConfig provideConfig(ConfigManager configManager)
+    {
+        return configManager.getConfig(BoomsEpicSoundsConfig.class);
+    }
 
-	private void reloadConfig()
-	{
-		trackedItemIds.clear();
+    @Override
+    protected void startUp()
+    {
+        Arrays.fill(lastXp, -1);
+        initialized = false;
+        pendingReload = true;
+        wasDead = false;
+        streamerMessageShown = false;
+    }
 
-		String raw = config.trackedItems();
-		if (raw == null || raw.trim().isEmpty())
-		{
-			return;
-		}
+    @Override
+    protected void shutDown()
+    {
+        trackedItemIds.clear();
+        initialized = false;
+        pendingReload = true;
+        streamerMessageShown = false;
+    }
 
-		for (String name : raw.split(","))
-		{
-			String trimmed = name.trim();
-			if (trimmed.isEmpty())
-			{
-				continue;
-			}
+    private void reloadConfig()
+    {
+        trackedItemIds.clear();
 
-			int id = findItemIdByName(trimmed);
-			if (id != -1)
-			{
-				trackedItemIds.add(id);
-			}
-		}
-	}
+        String raw = config.trackedItems();
+        if (raw == null || raw.trim().isEmpty())
+        {
+            return;
+        }
 
-	private int findItemIdByName(String itemName)
-	{
-		return itemManager.search(itemName).stream()
-			.filter(item -> item.getName().equalsIgnoreCase(itemName))
-			.mapToInt(ItemPrice::getId)
-			.findFirst()
-			.orElse(-1);
-	}
+        for (String name : raw.split(","))
+        {
+            String trimmed = name.trim();
+            if (trimmed.isEmpty())
+            {
+                continue;
+            }
 
-	@Subscribe
-	public void onConfigChanged(ConfigChanged event)
-	{
-		if ("boomsepicsounds".equals(event.getGroup()))
-		{
-			pendingReload = true;
-		}
-	}
+            int id = findItemIdByName(trimmed);
+            if (id != -1)
+            {
+                trackedItemIds.add(id);
+            }
+        }
+    }
 
-	@Subscribe
-	public void onLootReceived(LootReceived event)
-	{
-		if (!config.enableItemSounds() || event.getItems() == null)
-		{
-			return;
-		}
+    private int findItemIdByName(String itemName)
+    {
+        return itemManager.search(itemName).stream()
+                .filter(item -> item.getName().equalsIgnoreCase(itemName))
+                .mapToInt(ItemPrice::getId)
+                .findFirst()
+                .orElse(-1);
+    }
 
-		for (ItemStack item : event.getItems())
-		{
-			if (item == null || item.getId() <= 0)
-			{
-				continue;
-			}
+    @Subscribe
+    public void onConfigChanged(ConfigChanged event)
+    {
+        if (!"boomsepicsounds".equals(event.getGroup()))
+        {
+            return;
+        }
 
-			boolean trackedMatch = trackedItemIds.contains(item.getId());
+        if ("enableStreamerMessage".equals(event.getKey())
+                || "streamerMessage".equals(event.getKey()))
+        {
+            streamerMessageShown = false;
+            sendStreamerMessage();
+            return;
+        }
 
-			int price = itemManager.getItemPrice(item.getId());
-			long stackValue = (long) price * item.getQuantity();
-			boolean valueMatch = stackValue >= config.minimumLootValue();
+        pendingReload = true;
+    }
 
-			boolean shouldTrigger =
-				(config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.TRACKED_ITEMS && trackedMatch)
-					|| (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.GP_VALUE && valueMatch)
-					|| (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.BOTH && (trackedMatch || valueMatch));
+    @Subscribe
+    public void onLootReceived(LootReceived event)
+    {
+        if (!config.enableItemSounds() || event.getItems() == null)
+        {
+            return;
+        }
 
-			if (shouldTrigger)
-			{
-				trigger(SOUND_LOOT);
-				return;
-			}
-		}
-	}
+        for (ItemStack item : event.getItems())
+        {
+            if (item == null || item.getId() <= 0)
+            {
+                continue;
+            }
 
-	@Subscribe
-	public void onStatChanged(StatChanged event)
-	{
-		if (!config.levelUps())
-		{
-			return;
-		}
+            boolean trackedMatch = trackedItemIds.contains(item.getId());
 
-		Skill skill = event.getSkill();
-		int idx = skill.ordinal();
-		int xp = event.getXp();
+            int price = itemManager.getItemPrice(item.getId());
+            long stackValue = (long) price * item.getQuantity();
+            boolean valueMatch = stackValue >= config.minimumLootValue();
 
-		if (lastXp[idx] == -1)
-		{
-			lastXp[idx] = xp;
-			return;
-		}
+            boolean shouldTrigger =
+                    (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.TRACKED_ITEMS && trackedMatch)
+                            || (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.GP_VALUE && valueMatch)
+                            || (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.BOTH && (trackedMatch || valueMatch));
 
-		int oldLevel = Experience.getLevelForXp(lastXp[idx]);
-		int newLevel = Experience.getLevelForXp(xp);
+            if (shouldTrigger)
+            {
+                trigger(SOUND_LOOT);
+                return;
+            }
+        }
+    }
 
-		if (newLevel > oldLevel)
-		{
-			trigger(SOUND_LEVEL_UP);
-		}
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged event)
+    {
+        if (event.getGameState() == GameState.LOGGED_IN)
+        {
+            if (!streamerMessageShown)
+            {
+                sendStreamerMessage();
+            }
+        }
+        else if (event.getGameState() == GameState.LOGIN_SCREEN)
+        {
+            streamerMessageShown = false;
+        }
+    }
 
-		lastXp[idx] = xp;
-	}
+    @Subscribe
+    public void onStatChanged(StatChanged event)
+    {
+        if (!config.levelUps())
+        {
+            return;
+        }
 
-	@Subscribe
-	public void onGameTick(GameTick event)
-	{
-		if (!initialized || pendingReload)
-		{
-			reloadConfig();
-			initialized = true;
-			pendingReload = false;
-		}
+        Skill skill = event.getSkill();
+        int idx = skill.ordinal();
+        int xp = event.getXp();
 
-		Player player = client.getLocalPlayer();
-		if (player == null)
-		{
-			return;
-		}
+        if (lastXp[idx] == -1)
+        {
+            lastXp[idx] = xp;
+            return;
+        }
 
-		boolean dead = player.getHealthRatio() == 0;
+        int oldLevel = Experience.getLevelForXp(lastXp[idx]);
+        int newLevel = Experience.getLevelForXp(xp);
 
-		if (dead && !wasDead && config.death())
-		{
-			trigger(SOUND_DEATH);
-		}
+        if (newLevel > oldLevel)
+        {
+            trigger(SOUND_LEVEL_UP);
+        }
 
-		wasDead = dead;
-	}
+        lastXp[idx] = xp;
+    }
 
-	@Subscribe
-	public void onChatMessage(ChatMessage event)
-	{
-		String message = event.getMessage();
-		if (message == null)
-		{
-			return;
-		}
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        if (!initialized || pendingReload)
+        {
+            reloadConfig();
+            initialized = true;
+            pendingReload = false;
+        }
 
-		String msg = message.toLowerCase();
+        Player player = client.getLocalPlayer();
+        if (player == null)
+        {
+            return;
+        }
 
-		if (config.playerKilling()
-			&& (msg.contains("you have defeated") || msg.contains("you killed")))
-		{
-			trigger(SOUND_PLAYER_KILL);
-			return;
-		}
+        boolean dead = player.getHealthRatio() == 0;
 
-		if (config.sendReport()
-			&& (msg.contains("your abuse report has been received")
-			|| msg.contains("thank-you, your abuse report has been received")))
-		{
-			trigger(SOUND_REPORT);
-			return;
-		}
+        if (dead && !wasDead && config.death())
+        {
+            trigger(SOUND_DEATH);
+        }
 
-		if (config.prayerMessage()
-			&& (msg.contains("you have run out of prayer points")
-			|| msg.contains("you need to recharge your prayer")
-			|| msg.contains("your prayer has been drained")))
-		{
-			trigger(SOUND_PRAYER);
-			return;
-		}
+        wasDead = dead;
+    }
 
-		if (config.questCompletions()
-			&& (msg.contains("quest complete") || msg.contains("congratulations, quest complete")))
-		{
-			trigger(SOUND_QUEST);
-		}
-	}
+    @Subscribe
+    public void onChatMessage(ChatMessage event)
+    {
+        String message = event.getMessage();
+        if (message == null)
+        {
+            return;
+        }
 
-	private void trigger(String soundFile)
-	{
-		if (client.getTickCount() == lastSoundTick)
-		{
-			return;
-		}
+        String msg = message.toLowerCase();
 
-		lastSoundTick = client.getTickCount();
-		playSound(soundFile);
-	}
+        if (config.playerKilling()
+                && (msg.contains("you have defeated") || msg.contains("you killed")))
+        {
+            trigger(SOUND_PLAYER_KILL);
+            return;
+        }
 
-	private void playSound(String soundFile)
-	{
-		int volume = Math.max(0, Math.min(100, config.announcementVolume()));
+        if (config.sendReport()
+                && (msg.contains("your abuse report has been received")
+                || msg.contains("thank-you, your abuse report has been received")))
+        {
+            trigger(SOUND_REPORT);
+            return;
+        }
 
-		if (volume == 0)
-		{
-			return;
-		}
+        if (config.prayerMessage()
+                && (msg.contains("you have run out of prayer points")
+                || msg.contains("you need to recharge your prayer")
+                || msg.contains("your prayer has been drained")))
+        {
+            trigger(SOUND_PRAYER);
+            return;
+        }
 
-		float gain = (float) (20.0 * Math.log10(volume / 100.0));
+        if (config.questCompletions()
+                && (msg.contains("quest complete") || msg.contains("congratulations, quest complete")))
+        {
+            trigger(SOUND_QUEST);
+        }
+    }
 
-		try
-		{
-			audioPlayer.play(BoomsEpicSoundsPlugin.class, soundFile, gain);
-		}
-		catch (Exception e)
-		{
-			log.debug("Unable to play sound {}", soundFile, e);
-		}
-	}
+    private void trigger(String soundFile)
+    {
+        if (client.getTickCount() == lastSoundTick)
+        {
+            return;
+        }
+
+        lastSoundTick = client.getTickCount();
+        playSound(soundFile);
+    }
+
+    private void playSound(String soundFile)
+    {
+        int volume = Math.max(0, Math.min(100, config.announcementVolume()));
+
+        if (volume == 0)
+        {
+            return;
+        }
+
+        float gain = (float) (20.0 * Math.log10(volume / 100.0));
+
+        try
+        {
+            audioPlayer.play(BoomsEpicSoundsPlugin.class, soundFile, gain);
+        }
+        catch (Exception e)
+        {
+            log.debug("Unable to play sound {}", soundFile, e);
+        }
+    }
+
+    private void sendStreamerMessage()
+    {
+        if (!config.enableStreamerMessage())
+        {
+            return;
+        }
+
+        String message = config.streamerMessage();
+
+        if (message == null || message.trim().isEmpty())
+        {
+            return;
+        }
+
+        chatMessageManager.queue(
+                QueuedMessage.builder()
+                        .type(ChatMessageType.GAMEMESSAGE)
+                        .runeLiteFormattedMessage("<col=ff0000>" + message + "</col>")
+                        .build()
+        );
+
+        streamerMessageShown = true;
+    }
 }

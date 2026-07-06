@@ -1,6 +1,6 @@
 # Booms Epic Sounds
 
-Booms Epic Sounds is a RuneLite plugin that plays custom sound effects for selected in-game events.
+Booms Epic Sounds is a RuneLite plugin that plays sound effects and local chat notifications for selected in-game events.
 
 ## Features
 
@@ -13,6 +13,7 @@ Booms Epic Sounds is a RuneLite plugin that plays custom sound effects for selec
 - Quest completion notifications
 - Player kill notifications
 - Report player confirmation notifications
+- Custom local streamer message
 - Adjustable sound volume
 
 ## Configuration
@@ -23,13 +24,12 @@ Booms Epic Sounds is a RuneLite plugin that plays custom sound effects for selec
 - Set minimum GP value
 - Configure announcement volume
 - Custom tracked item list
+- Enable or disable streamer message
+- Custom streamer message text
 
-## Planned Features
+## Notes
 
-- Individual sounds per event
-- Custom sound packs
-- Per-event volume controls
-- Additional PvM and PvP triggers
+The streamer message is shown locally in the RuneLite chatbox only. It does not send any public, private, clan, or game chat messages to other players.
 
 ## License
 

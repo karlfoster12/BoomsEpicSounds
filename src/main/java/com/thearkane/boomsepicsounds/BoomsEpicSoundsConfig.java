@@ -1,9 +1,11 @@
-package com.thearkane.boomsepicsounds;
+package net.runelite.client.plugins.boomsepicsounds;
+
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+
 
 
 @ConfigGroup("boomsepicsounds")
@@ -28,39 +30,46 @@ public interface BoomsEpicSoundsConfig extends Config
     String generalSection = "general";
 
     @ConfigSection(
+            name = "Chat",
+            description = "Chat Options",
+            position = 1
+    )
+    String ChatSection = "Chat";
+
+    @ConfigSection(
             name = "Loot",
             description = "Loot Drop settings",
-            position = 1
+            position = 2
     )
     String LootSection = "Loot";
 
     @ConfigSection(
             name = "Combat & Specials",
             description = "Weapon special attacks and combat triggers",
-            position = 2
+            position = 3
     )
     String combatSection = "combat";
 
     @ConfigSection(
             name = "PvP",
             description = "Player vs Player triggers",
-            position = 3
+            position = 4
     )
     String pvpSection = "pvp";
 
     @ConfigSection(
             name = "Achievements",
             description = "Level ups, quests, pets, diaries and progression triggers",
-            position = 4
+            position = 5
     )
     String achievementSection = "achievements";
 
     @ConfigSection(
             name = "Misc",
             description = "Misc triggers",
-            position = 5
+            position = 6
     )
-    String MiscSection = "achievements";
+    String MiscSection = "Misc";
 
     // =====================================================
     // GENERAL
@@ -70,7 +79,8 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "enableItemSounds",
             name = "Enable Item Sounds",
             description = "Plays sounds when receiving tracked items",
-            section = generalSection
+            section = LootSection,
+            position = 0
     )
     default boolean enableItemSounds() { return true; }
 
@@ -81,7 +91,6 @@ public interface BoomsEpicSoundsConfig extends Config
             section = generalSection
     )
     default int announcementVolume() { return 100; }
-
 
     @ConfigItem(
             keyName = "lootSoundMode",
@@ -118,6 +127,34 @@ public interface BoomsEpicSoundsConfig extends Config
     default String trackedItems()
     {
         return "Bones, Big bones, Clue scroll (hard)";
+    }
+
+    // =====================================================
+    // CHAT MESSAGES
+    // =====================================================
+
+    @ConfigItem(
+            keyName = "enableStreamerMessage",
+            name = "Enable Streamer Message",
+            description = "Shows a custom local chatbox message when logging in or enabling the plugin",
+            section = ChatSection,
+            position = 0
+    )
+    default boolean enableStreamerMessage()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "streamerMessage",
+            name = "Streamer Message",
+            description = "Custom local chatbox message to display",
+            section = ChatSection,
+            position = 1
+    )
+    default String streamerMessage()
+    {
+        return "BoomsEpicKill is live Daily from 11AM EST";
     }
 
     // =====================================================
@@ -185,5 +222,3 @@ public interface BoomsEpicSoundsConfig extends Config
             section = pvpSection
     )
     default boolean sendReport() { return true; }
-
-}
