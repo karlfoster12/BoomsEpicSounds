@@ -34,7 +34,7 @@ import net.runelite.http.api.item.ItemPrice;
 public class BoomsEpicSoundsPlugin extends Plugin
 {
 	private static final String SOUND_LOOT = "/thehit.wav";
-	private static final String SOUND_PRAYER = "/letsgo.wav";
+	private static final String SOUND_PRAYER = "/prayer.wav";
 	private static final String SOUND_PLAYER_KILL = "/letsgo.wav";
 	private static final String SOUND_REPORT = "/letsgo.wav";
 	private static final String SOUND_DEATH = "/death.wav";

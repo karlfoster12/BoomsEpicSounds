@@ -111,7 +111,7 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "trackedItems",
             name = "Tracked Items",
             description = "Comma separated item names",
-            section = generalSection,
+            section = LootSection,
             position = 3
 
     )
