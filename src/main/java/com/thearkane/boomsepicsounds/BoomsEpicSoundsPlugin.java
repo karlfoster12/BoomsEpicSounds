@@ -30,6 +30,10 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.http.api.item.ItemPrice;
 
+// =============================================================================
+// Plugin metadata
+// =============================================================================
+
 @Slf4j
 @PluginDescriptor(
         name = "Booms Epic Sounds",
@@ -38,7 +42,15 @@ import net.runelite.http.api.item.ItemPrice;
 )
 public class BoomsEpicSoundsPlugin extends Plugin
 {
+    // =========================================================================
+    // Constants
+    // =========================================================================
+
     private static final String STREAMER_MESSAGE = "BoomEpicKill is live daily from 11AM EST";
+
+    // =========================================================================
+    // Chat triggers
+    // =========================================================================
 
     private final List<ChatTrigger> chatTriggers = List.of(
             new ChatTrigger(SoundEvent.PLAYER_KILL, BoomsEpicSoundsConfig::playerKilling,
@@ -49,8 +61,15 @@ public class BoomsEpicSoundsPlugin extends Plugin
                     "you have run out of prayer points", "you need to recharge your prayer",
                     "your prayer has been drained"),
             new ChatTrigger(SoundEvent.QUEST, BoomsEpicSoundsConfig::questCompletions,
-                    "quest complete", "congratulations, quest complete")
+                    "quest complete", "congratulations, quest complete"),
+            new ChatTrigger(SoundEvent.COLLECTION_LOG, BoomsEpicSoundsConfig::collectionLog,
+                    "new collection log item",
+                    "collection log")
     );
+
+    // =========================================================================
+    // Injected RuneLite services
+    // =========================================================================
 
     @Inject
     private Client client;
@@ -67,12 +86,12 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Inject
     private SoundManager soundManager;
 
+    // =========================================================================
+    // Runtime state
+    // =========================================================================
+
     private final Set<Integer> trackedItemIds = new HashSet<>();
     private final int[] lastLevels = new int[Skill.values().length];
-
-    // Sounds are queued rather than played immediately: only one plays per
-    // game tick (no overlapping spam), but a collision gets played on the
-    // next tick instead of being silently dropped.
     private final Deque<SoundEvent> pendingSounds = new ArrayDeque<>();
     private int lastPlayedTick = -1;
     private boolean wasDead;
@@ -80,11 +99,19 @@ public class BoomsEpicSoundsPlugin extends Plugin
     private boolean pendingReload = true;
     private boolean streamerMessageShown;
 
+    // =========================================================================
+    // Config provider
+    // =========================================================================
+
     @Provides
     BoomsEpicSoundsConfig provideConfig(ConfigManager configManager)
     {
         return configManager.getConfig(BoomsEpicSoundsConfig.class);
     }
+
+    // =========================================================================
+    // Plugin lifecycle
+    // =========================================================================
 
     @Override
     protected void startUp()
@@ -105,6 +132,10 @@ public class BoomsEpicSoundsPlugin extends Plugin
         pendingReload = true;
         streamerMessageShown = false;
     }
+
+    // =========================================================================
+    // Config loading
+    // =========================================================================
 
     private void reloadConfig()
     {
@@ -141,6 +172,10 @@ public class BoomsEpicSoundsPlugin extends Plugin
                 .orElse(-1);
     }
 
+    // =========================================================================
+    // RuneLite event handlers
+    // =========================================================================
+    // Configuration
     @Subscribe
     public void onConfigChanged(ConfigChanged event)
     {
@@ -159,14 +194,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         pendingReload = true;
     }
 
-    private void initialiseLevels()
-    {
-        for (Skill skill : Skill.values())
-        {
-            lastLevels[skill.ordinal()] = client.getRealSkillLevel(skill);
-        }
-    }
-
+    // Loot
     @Subscribe
     public void onLootReceived(LootReceived event)
     {
@@ -201,6 +229,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
     }
 
+    // Login / Logout
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
@@ -223,6 +252,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
     }
 
+    // Skills
     @Subscribe
     public void onStatChanged(StatChanged event)
     {
@@ -249,6 +279,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         lastLevels[idx] = currentLevel;
     }
 
+    // Game Tick
     @Subscribe
     public void onGameTick(GameTick event)
     {
@@ -260,23 +291,23 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
 
         Player player = client.getLocalPlayer();
-        if (player == null)
+
+        if (player != null)
         {
-            return;
+            boolean dead = player.getHealthRatio() == 0;
+
+            if (dead && !wasDead && config.death())
+            {
+                trigger(SoundEvent.DEATH);
+            }
+
+            wasDead = dead;
         }
-
-        boolean dead = player.getHealthRatio() == 0;
-
-        if (dead && !wasDead && config.death())
-        {
-            trigger(SoundEvent.DEATH);
-        }
-
-        wasDead = dead;
 
         playNextQueuedSound();
     }
 
+    // Chat
     @Subscribe
     public void onChatMessage(ChatMessage event)
     {
@@ -298,16 +329,25 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
     }
 
+    // =========================================================================
+    // Sound queue
+    // =========================================================================
+
     private void trigger(SoundEvent event)
     {
-        // Skip if the same event is already waiting to play, so a burst of
-        // identical drops/events doesn't back up the queue with duplicates.
-        if (event.equals(pendingSounds.peekLast()))
+        int currentTick = client.getTickCount();
+
+        if (currentTick != lastPlayedTick)
         {
+            lastPlayedTick = currentTick;
+            soundManager.play(event, config.announcementVolume());
             return;
         }
 
-        pendingSounds.addLast(event);
+        if (!event.equals(pendingSounds.peekLast()))
+        {
+            pendingSounds.addLast(event);
+        }
     }
 
     private void playNextQueuedSound()
@@ -328,6 +368,10 @@ public class BoomsEpicSoundsPlugin extends Plugin
         soundManager.play(next, config.announcementVolume());
     }
 
+    // =========================================================================
+    // Chat helpers
+    // =========================================================================
+
     private void sendStreamerMessage()
     {
         if (!config.enableStreamerMessage())
@@ -343,5 +387,17 @@ public class BoomsEpicSoundsPlugin extends Plugin
         );
 
         streamerMessageShown = true;
+    }
+
+    // =========================================================================
+    // Level and death helpers
+    // =========================================================================
+
+    private void initialiseLevels()
+    {
+        for (Skill skill : Skill.values())
+        {
+            lastLevels[skill.ordinal()] = client.getRealSkillLevel(skill);
+        }
     }
 }

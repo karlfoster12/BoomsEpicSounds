@@ -1,27 +1,45 @@
 # Booms Epic Sounds
 
-Booms Epic Sounds is a RuneLite plugin that plays custom sound effects and local chat notifications for selected in-game events.
+Booms Epic Sounds is a RuneLite plugin that plays custom sound effects and local chat notifications for a wide range of Old School RuneScape events.
 
-## Features
+The plugin supports both built-in fallback sounds and fully custom local sound packs, allowing players and streamers to personalise their RuneLite experience.
 
+---
+
+# Features
+
+## Loot Notifications
 - Loot Tracker integration
 - Tracked item notifications
 - GP value loot notifications
+- Configurable tracked item list
+- Configurable minimum GP value
+
+## Player Notifications
 - Player death notifications
+- Player kill notifications
 - Level-up notifications
 - Prayer notifications
 - Quest completion notifications
-- Player kill notifications
 - Report player confirmation notifications
-- Adjustable sound volume
+
+## Audio
+- Adjustable master sound volume
 - Random sound selection for supported events
 - Local custom sound pack support
 - Built-in fallback sounds
+- One sound played per game tick to prevent overlapping audio
+- Queued sound system so events are not skipped during busy gameplay
+
+## Quality of Life
 - Optional local streamer message
+- Simple configuration through the RuneLite Config panel
 
-## Custom Sounds
+---
 
-Booms Epic Sounds supports user-provided custom sound packs.
+# Custom Sounds
+
+Booms Epic Sounds supports fully custom local sound packs.
 
 On first launch, the plugin automatically creates the following folder inside your RuneLite directory:
 
@@ -30,21 +48,25 @@ On first launch, the plugin automatically creates the following folder inside yo
 └── booms-epic-sounds/
 ```
 
-Within this folder, event folders are automatically created:
+Each supported event receives its own folder automatically.
+
+Example:
 
 ```text
-Loot/
-Death/
-LevelUp/
-Prayer/
-PlayerKill/
-Report/
-QuestCompleted/
+.runelite/
+└── booms-epic-sounds/
+    ├── Loot/
+    ├── Death/
+    ├── LevelUp/
+    ├── Prayer/
+    ├── PlayerKill/
+    ├── Report/
+    └── QuestCompleted/
 ```
 
-To use your own sounds, simply copy one or more **.wav** files into the relevant folder.
+Simply place one or more `.wav` files inside the relevant folder.
 
-For example:
+Example:
 
 ```text
 .runelite/
@@ -55,11 +77,13 @@ For example:
         └── loot3.wav
 ```
 
-Whenever that event occurs, the plugin will randomly select one of your custom sounds.
+Whenever that event occurs, the plugin randomly selects one of the available sound files.
 
-If no custom sounds exist for an event, the plugin will automatically play one of its bundled fallback sounds.
+If no custom sounds exist, the plugin automatically falls back to its bundled default sounds.
 
-### Supported Event Folders
+---
+
+# Supported Sound Folders
 
 - Loot
 - Death
@@ -69,54 +93,81 @@ If no custom sounds exist for an event, the plugin will automatically play one o
 - Report
 - QuestCompleted
 
-### Sound Requirements
+---
 
-- Must be in **.wav** format.
-- Place files inside the correct event folder.
-- Multiple sounds per folder are supported and selected randomly.
+# Sound Requirements
 
-## Configuration
+- `.wav` format only
+- Place sounds inside the correct event folder
+- Multiple sound files per folder are supported
+- Sounds are randomly selected each time the event occurs
 
-- Enable or disable loot sounds
-- Trigger on tracked items
-- Trigger on GP value
-- Configure minimum GP value
-- Configure announcement volume
-- Configure tracked item list
-- Enable or disable the local streamer message
+---
 
-## Streamer Message
+# Configuration
+
+The plugin allows you to configure:
+
+- Enable or disable loot notifications
+- Tracked Item mode
+- GP Value mode
+- Combined loot mode
+- Minimum GP value
+- Announcement volume
+- Tracked item list
+- Local streamer message
+
+---
+
+# Streamer Message
 
 The optional streamer message is displayed **only in your own RuneLite chatbox**.
 
-It is never sent to public chat, private messages, clan chat, friends chat, or any other players.
+It is **never** sent to:
 
-## Notes
+- Public chat
+- Private messages
+- Friends Chat
+- Clan Chat
+- Group Chat
+- Other players
+
+---
+
+# Privacy
+
+Booms Epic Sounds is entirely local.
+
+- Your sound files never leave your computer.
+- The plugin does not upload, download, or share custom sound files.
+- No custom audio is distributed through the plugin.
+
+---
+
+# Notes
 
 - Only one sound is played per game tick to prevent overlapping audio.
-- Multiple events are queued to ensure sounds are not skipped during busy gameplay.
-- Custom sounds remain on your computer and are never uploaded or shared.
-- The plugin does not download or distribute user-provided sound files.
+- Additional sounds are automatically queued and played on following ticks.
+- Custom sound folders remain on your computer even if the plugin is disabled or removed.
 
-## License
+---
 
-BSD-2-Clause
+# Planned Features
 
-## Audio
-
-Booms Epic Sounds includes bundled fallback sounds for supported events.
-
-Users may replace or extend these by adding their own local `.wav` files inside the `.runelite/booms-epic-sounds` folder.
-
-The plugin does not upload, download, or distribute user-provided sound files.
-
-## Planned Features
-
-- Per-event custom volume controls
-- Additional PvM and PvP event support
 - Collection Log notifications
 - Combat Achievement notifications
 - Pet notifications
 - Raid-specific notifications
+- Additional PvM event notifications
+- Additional PvP event notifications
+- Per-event volume controls
+- Per-event enable/disable toggles
+- Custom sound folder opener
 - Sound pack import/export support
-- Optional sound folder opener from the plugin configuration
+- Plugin Hub sound pack compatibility
+
+---
+
+# License
+
+BSD-2-Clause

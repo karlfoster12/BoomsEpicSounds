@@ -203,4 +203,15 @@ public interface BoomsEpicSoundsConfig extends Config
             position = 0
     )
     default boolean sendReport() { return true; }
+
+    @ConfigItem(
+            keyName = "collectionLog",
+            name = "Collection Log",
+            description = "Play a sound when you unlock a new collection log item",
+            section = miscSection
+    )
+    default boolean collectionLog()
+    {
+        return true;
+    }
 }

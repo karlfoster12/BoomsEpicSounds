@@ -17,7 +17,9 @@ public enum SoundEvent
     PLAYER_KILL("PlayerKill", "/death.wav"),
     REPORT("Report", "/wellhesgunnagetbanned.wav", "/wellyourgunnagetbanned.wav"),
     LEVEL_UP("LevelUp", "/goodjobbuddyhopeyourhavingfun.wav"),
+    COLLECTION_LOG("thehit.wav"),
     QUEST("QuestCompleted", "/finallyquestcomplete.wav", "/ohmyyoufinishedanotherquest.wav");
+
 
     private final String folderName;
     private final String[] fallbackSounds;
