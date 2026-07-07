@@ -5,8 +5,6 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-
-
 @ConfigGroup("boomsepicsounds")
 public interface BoomsEpicSoundsConfig extends Config
 {
@@ -30,17 +28,17 @@ public interface BoomsEpicSoundsConfig extends Config
 
     @ConfigSection(
             name = "Chat",
-            description = "Chat Options",
+            description = "Chat message notifications",
             position = 1
     )
-    String ChatSection = "Chat";
+    String chatSection = "chat";
 
     @ConfigSection(
             name = "Loot",
-            description = "Loot Drop settings",
+            description = "Loot drop settings",
             position = 2
     )
-    String LootSection = "Loot";
+    String lootSection = "loot";
 
     @ConfigSection(
             name = "Combat & Specials",
@@ -68,93 +66,73 @@ public interface BoomsEpicSoundsConfig extends Config
             description = "Misc triggers",
             position = 6
     )
-    String MiscSection = "Misc";
+    String miscSection = "misc";
 
     // =====================================================
     // GENERAL
     // =====================================================
 
     @ConfigItem(
-            keyName = "enableItemSounds",
-            name = "Enable Item Sounds",
-            description = "Plays sounds when receiving tracked items",
-            section = LootSection,
-            position = 0
-    )
-    default boolean enableItemSounds() { return true; }
-
-    @ConfigItem(
             keyName = "announcementVolume",
             name = "Announcement Volume",
-            description = "Controls overall sound volume (if implemented)",
-            section = generalSection
+            description = "Controls overall sound volume",
+            section = generalSection,
+            position = 0
     )
     default int announcementVolume() { return 100; }
 
-    @ConfigItem(
-            keyName = "lootSoundMode",
-            name = "Loot Trigger Mode",
-            description = "Choose whether sounds trigger from tracked items, GP value, or both",
-            section = LootSection,
-            position = 1
-    )
-    default LootSoundMode lootSoundMode()
-    {
-        return LootSoundMode.TRACKED_ITEMS;
-    }
-
-    @ConfigItem(
-            keyName = "minimumLootValue",
-            name = "Minimum GP Value",
-            description = "Plays sound when a loot item stack is worth at least this much GP",
-            section = LootSection,
-            position = 2
-    )
-    default int minimumLootValue()
-    {
-        return 100000;
-    }
-
-    @ConfigItem(
-            keyName = "trackedItems",
-            name = "Tracked Items",
-            description = "Comma separated item names",
-            section = LootSection,
-            position = 3
-
-    )
-    default String trackedItems()
-    {
-        return "Bones, Big bones, Clue scroll (hard)";
-    }
-
     // =====================================================
-    // CHAT MESSAGES
+    // CHAT
     // =====================================================
 
     @ConfigItem(
             keyName = "enableStreamerMessage",
             name = "Enable Streamer Message",
-            description = "Shows a custom local chatbox message when logging in or enabling the plugin",
-            section = ChatSection,
+            description = "Shows a local chatbox message for BoomEpicKill",
+            section = chatSection,
             position = 0
     )
-    default boolean enableStreamerMessage()
-    {
-        return true;
-    }
+    default boolean enableStreamerMessage() { return true; }
+
+    // =====================================================
+    // LOOT
+    // =====================================================
 
     @ConfigItem(
-            keyName = "streamerMessage",
-            name = "Streamer Message",
-            description = "Custom local chatbox message to display",
-            section = ChatSection,
+            keyName = "enableItemSounds",
+            name = "Enable Item Sounds",
+            description = "Master toggle for loot sound notifications",
+            section = lootSection,
+            position = 0
+    )
+    default boolean enableItemSounds() { return true; }
+
+    @ConfigItem(
+            keyName = "lootSoundMode",
+            name = "Loot Trigger Mode",
+            description = "Choose whether sounds trigger from tracked items, GP value, or both",
+            section = lootSection,
             position = 1
     )
-    default String streamerMessage()
-    {
-        return "BoomsEpicKill is live Daily from 11AM EST";
-    }
+    default LootSoundMode lootSoundMode() { return LootSoundMode.TRACKED_ITEMS; }
+
+    @ConfigItem(
+            keyName = "minimumLootValue",
+            name = "Minimum GP Value",
+            description = "Plays sound when a loot item stack is worth at least this much GP",
+            section = lootSection,
+            position = 2
+    )
+    default int minimumLootValue() { return 100000; }
+
+    @ConfigItem(
+            keyName = "trackedItems",
+            name = "Tracked Items",
+            description = "Comma separated item names",
+            section = lootSection,
+            position = 3
+    )
+    default String trackedItems() { return "Bones, Big bones, Clue scroll (hard)"; }
 
     // =====================================================
     // COMBAT & SPECIALS
@@ -164,10 +142,10 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "prayerMessage",
             name = "Prayer Messages",
             description = "Plays sound on prayer-related notifications",
-            section = combatSection
+            section = combatSection,
+            position = 0
     )
     default boolean prayerMessage() { return true; }
-
 
     // =====================================================
     // PVP
@@ -177,10 +155,10 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "playerKilling",
             name = "Player Kills",
             description = "Plays sound when you kill a player",
-            section = pvpSection
+            section = pvpSection,
+            position = 0
     )
     default boolean playerKilling() { return true; }
-
 
     // =====================================================
     // ACHIEVEMENTS
@@ -190,7 +168,8 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "levelUps",
             name = "Level Ups",
             description = "Plays sound when leveling up",
-            section = achievementSection
+            section = achievementSection,
+            position = 0
     )
     default boolean levelUps() { return true; }
 
@@ -198,7 +177,8 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "questCompletions",
             name = "Quest Completion",
             description = "Plays sound when completing quests",
-            section = achievementSection
+            section = achievementSection,
+            position = 1
     )
     default boolean questCompletions() { return true; }
 
@@ -206,7 +186,8 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "death",
             name = "Death",
             description = "Plays sound when you die",
-            section = achievementSection
+            section = achievementSection,
+            position = 2
     )
     default boolean death() { return true; }
 
@@ -218,8 +199,8 @@ public interface BoomsEpicSoundsConfig extends Config
             keyName = "sendReport",
             name = "Report Player",
             description = "Plays sound when reporting a player",
-            section = MiscSection
+            section = miscSection,
+            position = 0
     )
     default boolean sendReport() { return true; }
-
 }
