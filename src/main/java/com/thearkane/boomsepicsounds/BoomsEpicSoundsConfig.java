@@ -94,6 +94,28 @@ public interface BoomsEpicSoundsConfig extends Config
     )
     default boolean enableStreamerMessage() { return true; }
 
+    @ConfigItem(
+            keyName = "livestreamChatNotification",
+            name = "Livestream Chat Notification",
+            description = "Display a local chat message when BoomEpicKill goes live",
+            section = chatSection
+    )
+    default boolean livestreamChatNotification()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "livestreamSoundNotification",
+            name = "Livestream Sound Notification",
+            description = "Play a sound when BoomEpicKill goes live",
+            section = chatSection
+    )
+    default boolean livestreamSoundNotification()
+    {
+        return true;
+    }
+
     // =====================================================
     // LOOT
     // =====================================================

@@ -1,11 +1,12 @@
 package com.thearkane.boomsepicsounds;
 
 import com.google.inject.Provides;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import com.thearkane.boomsepicsounds.livestream.LivestreamManager;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.http.api.item.ItemPrice;
 
@@ -46,7 +48,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
     // Constants
     // =========================================================================
 
-    private static final String STREAMER_MESSAGE = "BoomEpicKill is live daily from 11AM EST";
+    private static final String STREAMER_MESSAGE = "BoomEpicKill is live daily from 11AM ET";
 
     // =========================================================================
     // Chat triggers
@@ -60,7 +62,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
             new ChatTrigger(SoundEvent.PRAYER, BoomsEpicSoundsConfig::prayerMessage,
                     "you have run out of prayer points", "you need to recharge your prayer",
                     "your prayer has been drained"),
-            new ChatTrigger(SoundEvent.QUEST, BoomsEpicSoundsConfig::questCompletions,
+            new ChatTrigger(SoundEvent.QUEST_COMPLETED, BoomsEpicSoundsConfig::questCompletions,
                     "quest complete", "congratulations, quest complete"),
             new ChatTrigger(SoundEvent.COLLECTION_LOG, BoomsEpicSoundsConfig::collectionLog,
                     "new collection log item",
@@ -86,18 +88,23 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Inject
     private SoundManager soundManager;
 
+    @Inject
+    private LivestreamManager livestreamManager;
+
     // =========================================================================
     // Runtime state
     // =========================================================================
 
     private final Set<Integer> trackedItemIds = new HashSet<>();
     private final int[] lastLevels = new int[Skill.values().length];
-    private final Deque<SoundEvent> pendingSounds = new ArrayDeque<>();
-    private int lastPlayedTick = -1;
+    
+    private final Queue<SoundEvent> pendingSounds = new PriorityQueue<>(Comparator.comparingInt(SoundEvent::getPriority));
+
     private boolean wasDead;
     private boolean initialized;
     private boolean pendingReload = true;
     private boolean streamerMessageShown;
+    private boolean pendingLevelInit;
 
     // =========================================================================
     // Config provider
@@ -119,6 +126,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         Arrays.fill(lastLevels, -1);
         initialized = false;
         pendingReload = true;
+        pendingLevelInit = false;
         wasDead = false;
         streamerMessageShown = false;
         // Folder creation now lives entirely in SoundManager's constructor.
@@ -237,7 +245,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         {
             if (lastLevels[0] == -1)
             {
-                initialiseLevels();
+                pendingLevelInit = true;
             }
 
             if (!streamerMessageShown)
@@ -281,27 +289,33 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
     // Game Tick
     @Subscribe
-    public void onGameTick(GameTick event)
-    {
-        if (!initialized || pendingReload)
-        {
+    public void onGameTick(GameTick event) {
+        if (!initialized || pendingReload) {
             reloadConfig();
             initialized = true;
             pendingReload = false;
         }
 
+        if (pendingLevelInit) {
+            initialiseLevels();
+            pendingLevelInit = false;
+        }
+
         Player player = client.getLocalPlayer();
 
-        if (player != null)
-        {
+        if (player != null) {
             boolean dead = player.getHealthRatio() == 0;
 
-            if (dead && !wasDead && config.death())
-            {
+            if (dead && !wasDead && config.death()) {
                 trigger(SoundEvent.DEATH);
             }
 
             wasDead = dead;
+
+            if (livestreamManager.check(client.getTickCount()))
+            {
+                trigger(SoundEvent.LIVESTREAM);
+            }
         }
 
         playNextQueuedSound();
@@ -335,18 +349,10 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
     private void trigger(SoundEvent event)
     {
-        int currentTick = client.getTickCount();
 
-        if (currentTick != lastPlayedTick)
+        if (!pendingSounds.contains(event))
         {
-            lastPlayedTick = currentTick;
-            soundManager.play(event, config.announcementVolume());
-            return;
-        }
-
-        if (!event.equals(pendingSounds.peekLast()))
-        {
-            pendingSounds.addLast(event);
+            pendingSounds.add(event);
         }
     }
 
@@ -357,15 +363,9 @@ public class BoomsEpicSoundsPlugin extends Plugin
             return;
         }
 
-        int currentTick = client.getTickCount();
-        if (currentTick == lastPlayedTick)
-        {
-            return;
-        }
-
-        lastPlayedTick = currentTick;
-        SoundEvent next = pendingSounds.pollFirst();
+        SoundEvent next = pendingSounds.poll();
         soundManager.play(next, config.announcementVolume());
+        pendingSounds.clear();
     }
 
     // =========================================================================
