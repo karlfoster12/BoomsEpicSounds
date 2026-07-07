@@ -1,5 +1,9 @@
 package com.thearkane.boomsepicsounds.livestream;
 
+import com.thearkane.boomsepicsounds.BoomsEpicSoundsConfig;
+import com.thearkane.boomsepicsounds.SoundManager;
+
+
 import com.google.gson.Gson;
 import java.io.IOException;
 import javax.inject.Inject;
@@ -7,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
-import com.thearkane.boomsepicsounds.BoomsEpicSoundsConfig;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -25,7 +28,8 @@ public class LivestreamManager
     private final BoomsEpicSoundsConfig config;
     private final ChatMessageManager chatMessageManager;
     private final OkHttpClient okHttpClient;
-    private final Gson gson = new Gson();
+    private final SoundManager soundManager;
+    private final Gson gson;
 
     private int lastCheckTick = -CHECK_INTERVAL_TICKS;
 
@@ -41,12 +45,18 @@ public class LivestreamManager
     public LivestreamManager(
             BoomsEpicSoundsConfig config,
             ChatMessageManager chatMessageManager,
-            OkHttpClient okHttpClient)
+            SoundManager soundManager,
+            OkHttpClient okHttpClient,
+            Gson gson)
     {
         this.config = config;
         this.chatMessageManager = chatMessageManager;
+        this.soundManager = soundManager;
         this.okHttpClient = okHttpClient;
+        this.gson = gson;
     }
+
+
 
     /**
      * Polls (at most every CHECK_INTERVAL_TICKS) for livestream status and
