@@ -111,11 +111,12 @@ They are **never** sent to:
 
 # Privacy
 
-- Custom sound files remain on your computer.
-- Custom sound files are never uploaded, downloaded, or shared by the plugin.
-- Livestream status is read from a public remote JSON file.
-- Remote livestream messages are sanitised before display.
-- Links and formatting tags are blocked from remote messages.
+Booms Epic Sounds stores custom sound packs locally.
+
+- Custom sound files never leave your computer.
+- The plugin never uploads or shares your custom audio.
+- Optional livestream notifications periodically retrieve a small public JSON status file to determine whether the configured streamer is live.
+- No personal information is collected or transmitted.
 
 ---
 
