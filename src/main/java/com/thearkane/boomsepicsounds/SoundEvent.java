@@ -24,6 +24,7 @@ public enum SoundEvent
     PRAYER(7, "Prayer", "/prayer.wav"),
     REPORT(8, "Report", "/wellhesgunnagetbanned.wav", "/wellyourgunnagetbanned.wav"),
     LIVESTREAM(9, "Livestream", "/livestream.wav");
+    TRADE_ACCEPTED(10, "TradeAccepted", "/tradeaccepted.wav");
 
     private final int priority;
     private final String folderName;
