@@ -138,22 +138,43 @@ public class LivestreamManager
         if (status == null || !status.isEnabled() || !status.isLive())
         {
             liveMessageShown = false;
+            lastStreamTitle = "";
             return false;
         }
 
-        if (liveMessageShown)
+        String currentTitle = status.getTitle() == null
+                ? ""
+                : status.getTitle();
+
+        // First time the stream goes live
+        if (!liveMessageShown)
         {
+            if (config.livestreamChatNotification())
+            {
+                showLiveMessage(status);
+            }
+
+            liveMessageShown = true;
+            lastStreamTitle = currentTitle;
+
+            return config.livestreamSoundNotification();
+        }
+
+        // Stream title changed while already live
+        if (!currentTitle.equals(lastStreamTitle))
+        {
+            lastStreamTitle = currentTitle;
+
+            if (config.livestreamChatNotification())
+            {
+                showLiveMessage(status);
+            }
+
+            // Don't play the livestream sound again
             return false;
         }
 
-        if (config.livestreamChatNotification())
-        {
-            showLiveMessage(status);
-        }
-
-        liveMessageShown = true;
-
-        return config.livestreamSoundNotification();
+        return false;
     }
 
     private void showLiveMessage(LivestreamStatus status)
