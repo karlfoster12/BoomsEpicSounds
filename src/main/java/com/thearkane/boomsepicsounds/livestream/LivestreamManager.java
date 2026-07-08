@@ -176,7 +176,7 @@ public class LivestreamManager
 
         return false;
     }
-
+    
     private void showLiveMessage(LivestreamStatus status)
     {
         String message = MessageSanitiser.sanitise(status.getMessage());
