@@ -169,14 +169,13 @@ public class LivestreamManager
             {
                 showLiveMessage(status);
             }
-
-            // Don't play the livestream sound again
+            
             return false;
         }
 
         return false;
     }
-    
+
     private void showLiveMessage(LivestreamStatus status)
     {
         String message = MessageSanitiser.sanitise(status.getMessage());
