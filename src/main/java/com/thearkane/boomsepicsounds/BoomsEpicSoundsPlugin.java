@@ -1,4 +1,6 @@
 package com.thearkane.boomsepicsounds;
+package com.thearkane.boomsepicsounds.livestream.LivestreamManager;
+package com.thearkane.boomsepicsounds.trade.TradeManager;
 
 import com.google.inject.Provides;
 import java.util.Arrays;
@@ -28,7 +30,6 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import com.thearkane.boomsepicsounds.livestream.LivestreamManager;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.http.api.item.ItemPrice;
 
@@ -91,19 +92,23 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Inject
     private LivestreamManager livestreamManager;
 
+    @Inject
+    private TradeManager tradeManager;
+
     // =========================================================================
     // Runtime state
     // =========================================================================
 
     private final Set<Integer> trackedItemIds = new HashSet<>();
     private final int[] lastLevels = new int[Skill.values().length];
-    
+
     private final Queue<SoundEvent> pendingSounds = new PriorityQueue<>(Comparator.comparingInt(SoundEvent::getPriority));
 
     private boolean wasDead;
     private boolean initialized;
     private boolean pendingReload = true;
     private boolean streamerMessageShown;
+
     private boolean pendingLevelInit;
 
     // =========================================================================
@@ -301,6 +306,11 @@ public class BoomsEpicSoundsPlugin extends Plugin
             pendingLevelInit = false;
         }
 
+        if (tradeManager.check())
+        {
+            trigger(SoundEvent.TRADE_ACCEPTED);
+        }
+
         Player player = client.getLocalPlayer();
 
         if (player != null) {
@@ -363,6 +373,9 @@ public class BoomsEpicSoundsPlugin extends Plugin
             return;
         }
 
+        // Highest priority (lowest SoundEvent.getPriority()) plays.
+        // Anything else that fired the same tick is discarded, not deferred -
+        // only one sound should ever play per tick.
         SoundEvent next = pendingSounds.poll();
         soundManager.play(next, config.announcementVolume());
         pendingSounds.clear();

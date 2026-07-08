@@ -3,7 +3,6 @@ package com.thearkane.boomsepicsounds.livestream;
 import com.thearkane.boomsepicsounds.BoomsEpicSoundsConfig;
 import com.thearkane.boomsepicsounds.SoundManager;
 
-
 import com.google.gson.Gson;
 import java.io.IOException;
 import javax.inject.Inject;
@@ -93,8 +92,11 @@ public class LivestreamManager
 
         requestInProgress = true;
 
+        String url = LIVE_STATUS_URL + "?t=" + System.currentTimeMillis();
+
         Request request = new Request.Builder()
-                .url(LIVE_STATUS_URL)
+                .url(url)
+                .header("Cache-Control", "no-cache")
                 .get()
                 .build();
 

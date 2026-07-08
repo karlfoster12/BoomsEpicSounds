@@ -236,4 +236,15 @@ public interface BoomsEpicSoundsConfig extends Config
     {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "tradeAcceptedSoundNotification",
+            name = "Trade Accepted",
+            description = "Play a sound when a trade with another player completes successfully",
+            section = miscSection
+    )
+    default boolean tradeAcceptedSoundNotification()
+    {
+        return true;
+    }
 }

@@ -1,7 +1,6 @@
 
 package com.thearkane.boomsepicsounds;
 
-
 import lombok.Getter;
 
 import java.util.function.Predicate;
