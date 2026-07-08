@@ -1,6 +1,6 @@
 package com.thearkane.boomsepicsounds;
-package com.thearkane.boomsepicsounds.livestream.LivestreamManager;
-package com.thearkane.boomsepicsounds.trade.TradeManager;
+import com.thearkane.boomsepicsounds.livestream.LivestreamManager;
+import com.thearkane.boomsepicsounds.trade.TradeManager;
 
 import com.google.inject.Provides;
 import java.util.Arrays;
