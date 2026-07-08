@@ -39,6 +39,7 @@ public class LivestreamManager
     private volatile LivestreamStatus cachedStatus;
 
     private boolean liveMessageShown;
+    private String lastStreamTitle = "";
 
     @Inject
     public LivestreamManager(
@@ -169,7 +170,7 @@ public class LivestreamManager
             {
                 showLiveMessage(status);
             }
-            
+
             return false;
         }
 
