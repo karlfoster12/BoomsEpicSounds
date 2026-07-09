@@ -21,7 +21,7 @@ public enum SoundEvent
     COLLECTION_LOG(4, "CollectionLog", "/thehit.wav"),
     LEVEL_UP(5, "LevelUp", "/goodjobbuddyhopeyourhavingfun.wav", "/levelup.wav", "/levelup1.wav"),
     LOOT(6, "Loot", "/thehit.wav"),
-    PRAYER(7, "Prayer", "/prayer.wav"),
+    PRAYER(7, "Prayer", "/prayer.wav", "/prayer1.wav"),
     REPORT(8, "Report", "/wellhesgunnagetbanned.wav", "/wellyourgunnagetbanned.wav"),
     LIVESTREAM(9, "Livestream", "/livestream.wav"),
     TRADE_ACCEPTED(10, "TradeAccepted", "/tradeaccepted.wav");

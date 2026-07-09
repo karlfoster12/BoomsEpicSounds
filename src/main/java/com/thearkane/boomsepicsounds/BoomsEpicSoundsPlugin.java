@@ -335,6 +335,12 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Subscribe
     public void onChatMessage(ChatMessage event)
     {
+        if (event.getType() != ChatMessageType.GAMEMESSAGE
+                && event.getType() != ChatMessageType.SPAM)
+        {
+            return;
+        }
+
         String message = event.getMessage();
         if (message == null)
         {
@@ -402,6 +408,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         streamerMessageShown = true;
     }
 
+    
     // =========================================================================
     // Level and death helpers
     // =========================================================================
