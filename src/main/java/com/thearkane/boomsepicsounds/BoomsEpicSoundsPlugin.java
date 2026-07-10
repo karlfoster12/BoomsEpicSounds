@@ -1,12 +1,13 @@
 package com.thearkane.boomsepicsounds;
+
 import com.thearkane.boomsepicsounds.livestream.LivestreamManager;
 import com.thearkane.boomsepicsounds.trade.TradeManager;
-
 import com.google.inject.Provides;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -31,11 +32,8 @@ import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
+import net.runelite.client.util.Text;
 import net.runelite.http.api.item.ItemPrice;
-
-// =============================================================================
-// Plugin metadata
-// =============================================================================
 
 @Slf4j
 @PluginDescriptor(
@@ -45,34 +43,39 @@ import net.runelite.http.api.item.ItemPrice;
 )
 public class BoomsEpicSoundsPlugin extends Plugin
 {
-    // =========================================================================
-    // Constants
-    // =========================================================================
+    private static final String STREAMER_MESSAGE =
+            "BoomEpicKill is live daily from 11AM ET";
 
-    private static final String STREAMER_MESSAGE = "BoomEpicKill is live daily from 11AM ET";
-
-    // =========================================================================
-    // Chat triggers
-    // =========================================================================
-
+    /*
+     * Report is deliberately not included here.
+     * Report confirmation uses SNAPSHOTFEEDBACK and is handled separately.
+     */
     private final List<ChatTrigger> chatTriggers = List.of(
-            new ChatTrigger(SoundEvent.PLAYER_KILL, BoomsEpicSoundsConfig::playerKilling,
-                    "you have defeated", "you killed"),
-            new ChatTrigger(SoundEvent.REPORT, BoomsEpicSoundsConfig::sendReport,
-                    "abuse report"),
-            new ChatTrigger(SoundEvent.PRAYER, BoomsEpicSoundsConfig::prayerMessage,
-                    "you have run out of prayer points", "you need to recharge your prayer",
-                    "your prayer has been drained"),
-            new ChatTrigger(SoundEvent.QUEST_COMPLETED, BoomsEpicSoundsConfig::questCompletions,
-                    "quest complete", "congratulations, quest complete"),
-            new ChatTrigger(SoundEvent.COLLECTION_LOG, BoomsEpicSoundsConfig::collectionLog,
+            new ChatTrigger(
+                    SoundEvent.PLAYER_KILL,
+                    BoomsEpicSoundsConfig::playerKilling,
+                    "you have defeated"
+            ),
+            new ChatTrigger(
+                    SoundEvent.PRAYER,
+                    BoomsEpicSoundsConfig::prayerMessage,
+                    "you have run out of prayer points",
+                    "you need to recharge your prayer",
+                    "your prayer has been drained"
+            ),
+            new ChatTrigger(
+                    SoundEvent.QUEST_COMPLETED,
+                    BoomsEpicSoundsConfig::questCompletions,
+                    "quest complete",
+                    "congratulations, quest complete"
+            ),
+            new ChatTrigger(
+                    SoundEvent.COLLECTION_LOG,
+                    BoomsEpicSoundsConfig::collectionLog,
                     "new collection log item",
-                    "collection log")
+                    "collection log"
+            )
     );
-
-    // =========================================================================
-    // Injected RuneLite services
-    // =========================================================================
 
     @Inject
     private Client client;
@@ -95,25 +98,19 @@ public class BoomsEpicSoundsPlugin extends Plugin
     @Inject
     private TradeManager tradeManager;
 
-    // =========================================================================
-    // Runtime state
-    // =========================================================================
-
     private final Set<Integer> trackedItemIds = new HashSet<>();
     private final int[] lastLevels = new int[Skill.values().length];
 
-    private final Queue<SoundEvent> pendingSounds = new PriorityQueue<>(Comparator.comparingInt(SoundEvent::getPriority));
+    private final Queue<SoundEvent> pendingSounds =
+            new PriorityQueue<>(
+                    Comparator.comparingInt(SoundEvent::getPriority)
+            );
 
     private boolean wasDead;
     private boolean initialized;
     private boolean pendingReload = true;
     private boolean streamerMessageShown;
-
     private boolean pendingLevelInit;
-
-    // =========================================================================
-    // Config provider
-    // =========================================================================
 
     @Provides
     BoomsEpicSoundsConfig provideConfig(ConfigManager configManager)
@@ -121,34 +118,31 @@ public class BoomsEpicSoundsPlugin extends Plugin
         return configManager.getConfig(BoomsEpicSoundsConfig.class);
     }
 
-    // =========================================================================
-    // Plugin lifecycle
-    // =========================================================================
-
     @Override
     protected void startUp()
     {
         Arrays.fill(lastLevels, -1);
+        pendingSounds.clear();
+
         initialized = false;
         pendingReload = true;
         pendingLevelInit = false;
         wasDead = false;
         streamerMessageShown = false;
-        // Folder creation now lives entirely in SoundManager's constructor.
     }
 
     @Override
     protected void shutDown()
     {
         trackedItemIds.clear();
+        pendingSounds.clear();
+
         initialized = false;
         pendingReload = true;
+        pendingLevelInit = false;
+        wasDead = false;
         streamerMessageShown = false;
     }
-
-    // =========================================================================
-    // Config loading
-    // =========================================================================
 
     private void reloadConfig()
     {
@@ -163,12 +157,14 @@ public class BoomsEpicSoundsPlugin extends Plugin
         for (String name : raw.split(","))
         {
             String trimmed = name.trim();
+
             if (trimmed.isEmpty())
             {
                 continue;
             }
 
             int id = findItemIdByName(trimmed);
+
             if (id != -1)
             {
                 trackedItemIds.add(id);
@@ -185,10 +181,6 @@ public class BoomsEpicSoundsPlugin extends Plugin
                 .orElse(-1);
     }
 
-    // =========================================================================
-    // RuneLite event handlers
-    // =========================================================================
-    // Configuration
     @Subscribe
     public void onConfigChanged(ConfigChanged event)
     {
@@ -207,7 +199,6 @@ public class BoomsEpicSoundsPlugin extends Plugin
         pendingReload = true;
     }
 
-    // Loot
     @Subscribe
     public void onLootReceived(LootReceived event)
     {
@@ -223,16 +214,26 @@ public class BoomsEpicSoundsPlugin extends Plugin
                 continue;
             }
 
-            boolean trackedMatch = trackedItemIds.contains(item.getId());
+            boolean trackedMatch =
+                    trackedItemIds.contains(item.getId());
 
             int price = itemManager.getItemPrice(item.getId());
-            long stackValue = (long) price * item.getQuantity();
-            boolean valueMatch = stackValue >= config.minimumLootValue();
+            long stackValue =
+                    (long) price * item.getQuantity();
+
+            boolean valueMatch =
+                    stackValue >= config.minimumLootValue();
 
             boolean shouldTrigger =
-                    (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.TRACKED_ITEMS && trackedMatch)
-                            || (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.GP_VALUE && valueMatch)
-                            || (config.lootSoundMode() == BoomsEpicSoundsConfig.LootSoundMode.BOTH && (trackedMatch || valueMatch));
+                    (config.lootSoundMode()
+                            == BoomsEpicSoundsConfig.LootSoundMode.TRACKED_ITEMS
+                            && trackedMatch)
+                    || (config.lootSoundMode()
+                            == BoomsEpicSoundsConfig.LootSoundMode.GP_VALUE
+                            && valueMatch)
+                    || (config.lootSoundMode()
+                            == BoomsEpicSoundsConfig.LootSoundMode.BOTH
+                            && (trackedMatch || valueMatch));
 
             if (shouldTrigger)
             {
@@ -242,7 +243,6 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
     }
 
-    // Login / Logout
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
@@ -261,11 +261,11 @@ public class BoomsEpicSoundsPlugin extends Plugin
         else if (event.getGameState() == GameState.LOGIN_SCREEN)
         {
             streamerMessageShown = false;
+            pendingLevelInit = false;
             Arrays.fill(lastLevels, -1);
         }
     }
 
-    // Skills
     @Subscribe
     public void onStatChanged(StatChanged event)
     {
@@ -275,33 +275,35 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
 
         Skill skill = event.getSkill();
-        int idx = skill.ordinal();
+        int index = skill.ordinal();
         int currentLevel = event.getLevel();
 
-        if (lastLevels[idx] == -1)
+        if (lastLevels[index] == -1)
         {
-            lastLevels[idx] = currentLevel;
+            lastLevels[index] = currentLevel;
             return;
         }
 
-        if (currentLevel > lastLevels[idx])
+        if (currentLevel > lastLevels[index])
         {
             trigger(SoundEvent.LEVEL_UP);
         }
 
-        lastLevels[idx] = currentLevel;
+        lastLevels[index] = currentLevel;
     }
 
-    // Game Tick
     @Subscribe
-    public void onGameTick(GameTick event) {
-        if (!initialized || pendingReload) {
+    public void onGameTick(GameTick event)
+    {
+        if (!initialized || pendingReload)
+        {
             reloadConfig();
             initialized = true;
             pendingReload = false;
         }
 
-        if (pendingLevelInit) {
+        if (pendingLevelInit)
+        {
             initialiseLevels();
             pendingLevelInit = false;
         }
@@ -313,10 +315,12 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
         Player player = client.getLocalPlayer();
 
-        if (player != null) {
+        if (player != null)
+        {
             boolean dead = player.getHealthRatio() == 0;
 
-            if (dead && !wasDead && config.death()) {
+            if (dead && !wasDead && config.death())
+            {
                 trigger(SoundEvent.DEATH);
             }
 
@@ -331,27 +335,47 @@ public class BoomsEpicSoundsPlugin extends Plugin
         playNextQueuedSound();
     }
 
-    // Chat
     @Subscribe
     public void onChatMessage(ChatMessage event)
     {
+        String message = event.getMessage();
+
+        if (message == null)
+        {
+            return;
+        }
+
+        String standardizedMessage =
+                Text.standardize(message)
+                        .toLowerCase(Locale.ROOT);
+
+        /*
+         * Successful abuse-report confirmations use their own message type.
+         * Handle this before rejecting non-game messages.
+         */
+        if (event.getType() == ChatMessageType.SNAPSHOTFEEDBACK)
+        {
+            if (config.sendReport()
+                    && standardizedMessage.contains("abuse report"))
+            {
+                trigger(SoundEvent.REPORT);
+            }
+
+            return;
+        }
+
+        /*
+         * Ignore private chat, public chat, clan chat and friends chat.
+         */
         if (event.getType() != ChatMessageType.GAMEMESSAGE
                 && event.getType() != ChatMessageType.SPAM)
         {
             return;
         }
 
-        String message = event.getMessage();
-        if (message == null)
-        {
-            return;
-        }
-
-        String msg = message.toLowerCase();
-
         for (ChatTrigger chatTrigger : chatTriggers)
         {
-            if (chatTrigger.matches(msg, config))
+            if (chatTrigger.matches(standardizedMessage, config))
             {
                 trigger(chatTrigger.getEvent());
                 return;
@@ -359,13 +383,8 @@ public class BoomsEpicSoundsPlugin extends Plugin
         }
     }
 
-    // =========================================================================
-    // Sound queue
-    // =========================================================================
-
     private void trigger(SoundEvent event)
     {
-
         if (!pendingSounds.contains(event))
         {
             pendingSounds.add(event);
@@ -379,17 +398,18 @@ public class BoomsEpicSoundsPlugin extends Plugin
             return;
         }
 
-        // Highest priority (lowest SoundEvent.getPriority()) plays.
-        // Anything else that fired the same tick is discarded, not deferred -
-        // only one sound should ever play per tick.
         SoundEvent next = pendingSounds.poll();
-        soundManager.play(next, config.announcementVolume());
+
+        soundManager.play(
+                next,
+                config.announcementVolume()
+        );
+
+        /*
+         * Only the highest-priority event from this tick is played.
+         */
         pendingSounds.clear();
     }
-
-    // =========================================================================
-    // Chat helpers
-    // =========================================================================
 
     private void sendStreamerMessage()
     {
@@ -401,23 +421,23 @@ public class BoomsEpicSoundsPlugin extends Plugin
         chatMessageManager.queue(
                 QueuedMessage.builder()
                         .type(ChatMessageType.GAMEMESSAGE)
-                        .runeLiteFormattedMessage("<col=ff0000>" + STREAMER_MESSAGE + "</col>")
+                        .runeLiteFormattedMessage(
+                                "<col=ff0000>"
+                                        + STREAMER_MESSAGE
+                                        + "</col>"
+                        )
                         .build()
         );
 
         streamerMessageShown = true;
     }
 
-    
-    // =========================================================================
-    // Level and death helpers
-    // =========================================================================
-
     private void initialiseLevels()
     {
         for (Skill skill : Skill.values())
         {
-            lastLevels[skill.ordinal()] = client.getRealSkillLevel(skill);
+            lastLevels[skill.ordinal()] =
+                    client.getRealSkillLevel(skill);
         }
     }
 }
