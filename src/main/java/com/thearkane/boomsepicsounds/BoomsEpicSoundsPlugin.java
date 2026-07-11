@@ -2,6 +2,7 @@ package com.thearkane.boomsepicsounds;
 
 import com.thearkane.boomsepicsounds.livestream.LivestreamManager;
 import com.thearkane.boomsepicsounds.trade.TradeManager;
+
 import com.google.inject.Provides;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -46,10 +47,6 @@ public class BoomsEpicSoundsPlugin extends Plugin
     private static final String STREAMER_MESSAGE =
             "BoomEpicKill is live daily from 11AM ET";
 
-    /*
-     * Report is deliberately not included here.
-     * Report confirmation uses SNAPSHOTFEEDBACK and is handled separately.
-     */
     private final List<ChatTrigger> chatTriggers = List.of(
             new ChatTrigger(
                     SoundEvent.PLAYER_KILL,
@@ -60,7 +57,6 @@ public class BoomsEpicSoundsPlugin extends Plugin
                     SoundEvent.PRAYER,
                     BoomsEpicSoundsConfig::prayerMessage,
                     "you have run out of prayer points",
-                    "you need to recharge your prayer",
                     "your prayer has been drained"
             ),
             new ChatTrigger(
@@ -149,6 +145,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
         trackedItemIds.clear();
 
         String raw = config.trackedItems();
+
         if (raw == null || raw.trim().isEmpty())
         {
             return;
@@ -218,6 +215,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
                     trackedItemIds.contains(item.getId());
 
             int price = itemManager.getItemPrice(item.getId());
+
             long stackValue =
                     (long) price * item.getQuantity();
 
@@ -228,10 +226,10 @@ public class BoomsEpicSoundsPlugin extends Plugin
                     (config.lootSoundMode()
                             == BoomsEpicSoundsConfig.LootSoundMode.TRACKED_ITEMS
                             && trackedMatch)
-                    || (config.lootSoundMode()
+                            || (config.lootSoundMode()
                             == BoomsEpicSoundsConfig.LootSoundMode.GP_VALUE
                             && valueMatch)
-                    || (config.lootSoundMode()
+                            || (config.lootSoundMode()
                             == BoomsEpicSoundsConfig.LootSoundMode.BOTH
                             && (trackedMatch || valueMatch));
 
@@ -345,27 +343,25 @@ public class BoomsEpicSoundsPlugin extends Plugin
             return;
         }
 
-        String standardizedMessage =
-                Text.standardize(message)
-                        .toLowerCase(Locale.ROOT);
+        String standardizedMessage = Text.standardize(message)
+                .toLowerCase(Locale.ROOT);
 
         /*
-         * Successful abuse-report confirmations use their own message type.
-         * Handle this before rejecting non-game messages.
+         * Accept report confirmations from either possible RuneLite type.
          */
-        if (event.getType() == ChatMessageType.SNAPSHOTFEEDBACK)
+        if (config.sendReport()
+                && standardizedMessage.contains("abuse report")
+                && (event.getType() == ChatMessageType.GAMEMESSAGE
+                || event.getType() == ChatMessageType.SNAPSHOTFEEDBACK))
         {
-            if (config.sendReport()
-                    && standardizedMessage.contains("abuse report"))
-            {
-                trigger(SoundEvent.REPORT);
-            }
-
+            log.info("REPORT DEBUG | report trigger matched");
+            trigger(SoundEvent.REPORT);
             return;
         }
 
         /*
-         * Ignore private chat, public chat, clan chat and friends chat.
+         * Block private, public, clan and friends-chat messages
+         * from triggering all other sounds.
          */
         if (event.getType() != ChatMessageType.GAMEMESSAGE
                 && event.getType() != ChatMessageType.SPAM)
@@ -375,6 +371,14 @@ public class BoomsEpicSoundsPlugin extends Plugin
 
         for (ChatTrigger chatTrigger : chatTriggers)
         {
+            /*
+             * Report is handled separately above.
+             */
+            if (chatTrigger.getEvent() == SoundEvent.REPORT)
+            {
+                continue;
+            }
+
             if (chatTrigger.matches(standardizedMessage, config))
             {
                 trigger(chatTrigger.getEvent());
