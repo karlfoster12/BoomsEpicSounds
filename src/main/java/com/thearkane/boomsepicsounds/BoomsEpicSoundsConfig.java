@@ -127,7 +127,10 @@ public interface BoomsEpicSoundsConfig extends Config
             section = lootSection,
             position = 0
     )
-    default boolean enableItemSounds() { return true; }
+    default boolean enableItemSounds()
+    {
+        return true;
+    }
 
     @ConfigItem(
             keyName = "lootSoundMode",
@@ -136,7 +139,10 @@ public interface BoomsEpicSoundsConfig extends Config
             section = lootSection,
             position = 1
     )
-    default LootSoundMode lootSoundMode() { return LootSoundMode.TRACKED_ITEMS; }
+    default LootSoundMode lootSoundMode()
+    {
+        return LootSoundMode.GP_VALUE;
+    }
 
     @ConfigItem(
             keyName = "minimumLootValue",
@@ -145,7 +151,10 @@ public interface BoomsEpicSoundsConfig extends Config
             section = lootSection,
             position = 2
     )
-    default int minimumLootValue() { return 100000; }
+    default int minimumLootValue()
+    {
+        return 100000;
+    }
 
     @ConfigItem(
             keyName = "trackedItems",
@@ -154,7 +163,10 @@ public interface BoomsEpicSoundsConfig extends Config
             section = lootSection,
             position = 3
     )
-    default String trackedItems() { return "Bones, Big bones, Clue scroll (hard)"; }
+    default String trackedItems()
+    {
+        return "Clue scroll (hard), ";
+    }
 
     // =====================================================
     // COMBAT & SPECIALS

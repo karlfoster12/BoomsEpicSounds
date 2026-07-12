@@ -14,11 +14,13 @@ import java.util.Queue;
 import java.util.Set;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -47,12 +49,18 @@ public class BoomsEpicSoundsPlugin extends Plugin
     private static final String STREAMER_MESSAGE =
             "BoomEpicKill is live daily from 11AM ET";
 
+    /*
+     * Maximum time allowed between ActorDeath and the matching
+     * "You have defeated..." game message.
+     *
+     * Five ticks is approximately three seconds.
+     */
+    private static final int PLAYER_KILL_CONFIRMATION_TICKS = 5;
+
+    /*
+     * Player kills and abuse reports are handled separately.
+     */
     private final List<ChatTrigger> chatTriggers = List.of(
-            new ChatTrigger(
-                    SoundEvent.PLAYER_KILL,
-                    BoomsEpicSoundsConfig::playerKilling,
-                    "you have defeated"
-            ),
             new ChatTrigger(
                     SoundEvent.PRAYER,
                     BoomsEpicSoundsConfig::prayerMessage,
@@ -108,6 +116,12 @@ public class BoomsEpicSoundsPlugin extends Plugin
     private boolean streamerMessageShown;
     private boolean pendingLevelInit;
 
+    /*
+     * Temporary PvP kill candidate recorded by ActorDeath.
+     */
+    private String recentlyDefeatedPlayerName;
+    private int recentlyDefeatedPlayerTick = -1;
+
     @Provides
     BoomsEpicSoundsConfig provideConfig(ConfigManager configManager)
     {
@@ -119,6 +133,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
     {
         Arrays.fill(lastLevels, -1);
         pendingSounds.clear();
+        clearPlayerKillCandidate();
 
         initialized = false;
         pendingReload = true;
@@ -132,6 +147,7 @@ public class BoomsEpicSoundsPlugin extends Plugin
     {
         trackedItemIds.clear();
         pendingSounds.clear();
+        clearPlayerKillCandidate();
 
         initialized = false;
         pendingReload = true;
@@ -260,7 +276,9 @@ public class BoomsEpicSoundsPlugin extends Plugin
         {
             streamerMessageShown = false;
             pendingLevelInit = false;
+
             Arrays.fill(lastLevels, -1);
+            clearPlayerKillCandidate();
         }
     }
 
@@ -290,6 +308,67 @@ public class BoomsEpicSoundsPlugin extends Plugin
         lastLevels[index] = currentLevel;
     }
 
+    /*
+     * Records a PvP death candidate.
+     *
+     * This does not play the sound by itself. The game must also send a
+     * matching "You have defeated <name>" message shortly afterwards.
+     */
+    @Subscribe
+    public void onActorDeath(ActorDeath event)
+    {
+        Actor actor = event.getActor();
+
+        if (!(actor instanceof Player))
+        {
+            return;
+        }
+
+        Player deadPlayer = (Player) actor;
+        Player localPlayer = client.getLocalPlayer();
+
+        if (localPlayer == null || deadPlayer == localPlayer)
+        {
+            return;
+        }
+
+        /*
+         * Confirm that the local player and dead player were interacting.
+         *
+         * Either direction is accepted because one actor's interacting
+         * reference may clear slightly before the death event is received.
+         */
+        boolean localWasTargetingDeadPlayer =
+                localPlayer.getInteracting() == deadPlayer;
+
+        boolean deadPlayerWasTargetingLocal =
+                deadPlayer.getInteracting() == localPlayer;
+
+        if (!localWasTargetingDeadPlayer && !deadPlayerWasTargetingLocal)
+        {
+            return;
+        }
+
+        String deadPlayerName = deadPlayer.getName();
+
+        if (deadPlayerName == null || deadPlayerName.trim().isEmpty())
+        {
+            return;
+        }
+
+        recentlyDefeatedPlayerName =
+                Text.standardize(deadPlayerName)
+                        .toLowerCase(Locale.ROOT);
+
+        recentlyDefeatedPlayerTick = client.getTickCount();
+
+        log.debug(
+                "Recorded PvP death candidate: {} at tick {}",
+                recentlyDefeatedPlayerName,
+                recentlyDefeatedPlayerTick
+        );
+    }
+
     @Subscribe
     public void onGameTick(GameTick event)
     {
@@ -304,6 +383,16 @@ public class BoomsEpicSoundsPlugin extends Plugin
         {
             initialiseLevels();
             pendingLevelInit = false;
+        }
+
+        /*
+         * Remove an unconfirmed PvP candidate once its time window expires.
+         */
+        if (recentlyDefeatedPlayerName != null
+                && client.getTickCount() - recentlyDefeatedPlayerTick
+                > PLAYER_KILL_CONFIRMATION_TICKS)
+        {
+            clearPlayerKillCandidate();
         }
 
         if (tradeManager.check())
@@ -343,25 +432,26 @@ public class BoomsEpicSoundsPlugin extends Plugin
             return;
         }
 
-        String standardizedMessage = Text.standardize(message)
-                .toLowerCase(Locale.ROOT);
+        String standardizedMessage =
+                Text.standardize(message)
+                        .toLowerCase(Locale.ROOT);
 
         /*
-         * Accept report confirmations from either possible RuneLite type.
+         * Abuse report confirmations use SNAPSHOTFEEDBACK.
          */
-        if (config.sendReport()
-                && standardizedMessage.contains("abuse report")
-                && (event.getType() == ChatMessageType.GAMEMESSAGE
-                || event.getType() == ChatMessageType.SNAPSHOTFEEDBACK))
+        if (event.getType() == ChatMessageType.SNAPSHOTFEEDBACK)
         {
-            log.info("REPORT DEBUG | report trigger matched");
-            trigger(SoundEvent.REPORT);
+            if (config.sendReport()
+                    && standardizedMessage.contains("abuse report"))
+            {
+                trigger(SoundEvent.REPORT);
+            }
+
             return;
         }
 
         /*
-         * Block private, public, clan and friends-chat messages
-         * from triggering all other sounds.
+         * Block private messages, public chat, clan chat and friends chat.
          */
         if (event.getType() != ChatMessageType.GAMEMESSAGE
                 && event.getType() != ChatMessageType.SPAM)
@@ -369,22 +459,54 @@ public class BoomsEpicSoundsPlugin extends Plugin
             return;
         }
 
+        /*
+         * Confirm that the recently dead Player is the exact player named
+         * by the game's "You have defeated..." message.
+         */
+        if (config.playerKilling()
+                && recentlyDefeatedPlayerName != null
+                && recentlyDefeatedPlayerTick >= 0)
+        {
+            int ticksSinceDeath =
+                    client.getTickCount() - recentlyDefeatedPlayerTick;
+
+            boolean withinConfirmationWindow =
+                    ticksSinceDeath >= 0
+                            && ticksSinceDeath
+                            <= PLAYER_KILL_CONFIRMATION_TICKS;
+
+            boolean defeatedMessage =
+                    standardizedMessage.contains("you have defeated");
+
+            boolean matchingPlayerName =
+                    standardizedMessage.contains(
+                            recentlyDefeatedPlayerName
+                    );
+
+            if (withinConfirmationWindow
+                    && defeatedMessage
+                    && matchingPlayerName)
+            {
+                trigger(SoundEvent.PLAYER_KILL);
+                clearPlayerKillCandidate();
+                return;
+            }
+        }
+
         for (ChatTrigger chatTrigger : chatTriggers)
         {
-            /*
-             * Report is handled separately above.
-             */
-            if (chatTrigger.getEvent() == SoundEvent.REPORT)
-            {
-                continue;
-            }
-
             if (chatTrigger.matches(standardizedMessage, config))
             {
                 trigger(chatTrigger.getEvent());
                 return;
             }
         }
+    }
+
+    private void clearPlayerKillCandidate()
+    {
+        recentlyDefeatedPlayerName = null;
+        recentlyDefeatedPlayerTick = -1;
     }
 
     private void trigger(SoundEvent event)
